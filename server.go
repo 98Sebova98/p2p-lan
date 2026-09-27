@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -19,6 +20,17 @@ func main() {
 		port = "8080"
 	}
 
+	// 1. Запускаем минимальный HTTP-сервер в фоновом потоке (горутине),
+	// чтобы Render успешнее проходил проверку порта (Health Check)
+	go func() {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
+		_ = http.ListenAndServe("0.0.0.0:"+port, nil)
+	}()
+
+	// 2. Ваш исходный UDP-сервер на том же порту
 	addr, _ := net.ResolveUDPAddr("udp", ":"+port)
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
